@@ -1,5 +1,5 @@
 // ─────────────────────────────────────────────
-// Mi Planner · App shell
+// PLANNERFY · App shell
 // ─────────────────────────────────────────────
 const VIEWS = [
   { key: 'hoy',       label: 'Hoy',       comp: ViewDaily },
@@ -10,7 +10,7 @@ const VIEWS = [
   { key: 'bienestar', label: 'Bienestar', comp: ViewWellness },
 ];
 
-const DOC_ID = 'mi-planner';
+const DOC_ID = 'plannerfy';
 
 // ── Utilidades de datos ──
 function exportData() {
@@ -91,7 +91,7 @@ function NavBar({ current, onChange, onOpenSettings, onExport, onImportClick, on
         {/* Marca */}
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 9, flex: '0 0 auto' }}>
           <span style={{ width: 9, height: 9, borderRadius: 99, background: accent, display: 'inline-block', transform: 'translateY(-2px)' }} />
-          <span style={{ fontFamily: BRAND.font.serif, fontStyle: 'italic', fontWeight: 600, fontSize: 26, color: BRAND.ink, letterSpacing: '0.01em', whiteSpace: 'nowrap' }}>Mi Planner</span>
+          <span style={{ fontFamily: BRAND.font.serif, fontStyle: 'italic', fontWeight: 600, fontSize: 26, color: BRAND.ink, letterSpacing: '0.01em', whiteSpace: 'nowrap' }}>PLANNERFY</span>
         </div>
 
         {/* Tabs de vista */}

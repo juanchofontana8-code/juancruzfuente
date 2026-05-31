@@ -1,5 +1,5 @@
 // ─────────────────────────────────────────────
-// Mi Planner · Sistema de marca
+// PLANNERFY · Sistema de marca
 // ─────────────────────────────────────────────
 const BRAND = {
   font: {
@@ -58,7 +58,7 @@ function useAccent() {
 // ── usePersist · useState con respaldo en localStorage ──
 // key: string único por campo, p.ej. 'daily|clima'
 function usePersist(key, init) {
-  const full = `lp:mi-planner:${key}`;
+  const full = `lp:plannerfy:${key}`;
   const stored = (() => {
     try {
       const v = localStorage.getItem(full);

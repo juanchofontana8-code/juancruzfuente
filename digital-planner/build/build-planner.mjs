@@ -180,7 +180,7 @@ const html = `<!DOCTYPE html>
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5, user-scalable=yes" />
-  <title>Mi Planner</title>
+  <title>PLANNERFY</title>
   <style>
 ${fontsCSS}
 ${globalCSS}
@@ -194,7 +194,7 @@ ${bundleJS}
 </body>
 </html>`;
 
-const outFile = path.join(OUT, 'mi-planner.html');
+const outFile = path.join(OUT, 'plannerfy.html');
 fs.writeFileSync(outFile, html);
 
 const sizeMB = (fs.statSync(outFile).size / (1024 * 1024)).toFixed(2);

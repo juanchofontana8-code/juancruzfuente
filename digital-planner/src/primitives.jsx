@@ -1,5 +1,5 @@
 // ─────────────────────────────────────────────
-// Mi Planner · Primitivos reutilizables
+// PLANNERFY · Primitivos reutilizables
 // ─────────────────────────────────────────────
 const { useState, useRef, useEffect } = React;
 
