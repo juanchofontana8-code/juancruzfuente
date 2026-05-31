@@ -1,0 +1,13 @@
+{
+  "name": "mi-planner",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "build:planner": "node build/build-planner.mjs"
+  },
+  "devDependencies": {
+    "esbuild": "^0.21.5",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  }
+}
