@@ -3,6 +3,7 @@
 // ─────────────────────────────────────────────
 const VIEWS = [
   { key: 'hoy',       label: 'Hoy',       comp: ViewDaily },
+  { key: 'agenda',    label: 'Agenda',    comp: ViewAgenda },
   { key: 'semana',    label: 'Semana',    comp: ViewWeekly },
   { key: 'mes',       label: 'Mes',       comp: ViewMonthly },
   { key: 'anio',      label: 'Año',       comp: ViewYearly },

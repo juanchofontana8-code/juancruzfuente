@@ -22,7 +22,7 @@ fs.mkdirSync(ASSETS, { recursive: true });
 // ── Orden de carga igual al host ──
 const JSX_ORDER = [
   'brand.jsx', 'primitives.jsx',
-  'view_daily.jsx', 'view_weekly.jsx', 'view_monthly.jsx',
+  'view_daily.jsx', 'view_agenda.jsx', 'view_weekly.jsx', 'view_monthly.jsx',
   'view_yearly.jsx', 'view_habits.jsx', 'view_wellness.jsx',
   'app.jsx',
 ];
