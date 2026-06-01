@@ -1,13 +1,56 @@
-# Mi Planner — Web App autónoma
+# Plannerfy — App de escritorio
 
-Planner personal interactivo generado a partir del handoff de diseño.
-Todo el contenido que escribas se guarda automáticamente en el navegador.
+Planner personal interactivo. Se instala como aplicación nativa en Mac, Windows y Linux.
+Todo lo que escribas se guarda automáticamente y persiste entre sesiones.
 
-## Generar el HTML
+---
+
+## Generar el instalador (app de escritorio)
+
+> Requisitos: Node.js 18+
 
 ```bash
-npm install && npm run build:planner
+npm install
+npm run dist
 ```
+
+Esto genera el instalador en la carpeta `dist-app/`:
+
+| Plataforma | Archivo generado | Instalación |
+|---|---|---|
+| **Windows** | `Plannerfy Setup 1.0.0.exe` | Doble clic → instala y crea acceso directo en el escritorio |
+| **Mac** | `Plannerfy-1.0.0.dmg` | Abrir el .dmg → arrastrar Plannerfy a Aplicaciones |
+| **Linux** | `Plannerfy-1.0.0.AppImage` | Dar permisos de ejecución y doble clic |
+
+Para compilar solo para una plataforma específica:
+```bash
+npm run dist:win    # Windows (.exe)
+npm run dist:mac    # Mac (.dmg) — requiere ejecutar en Mac
+npm run dist:linux  # Linux (.AppImage + .deb)
+```
+
+> **Nota sobre Mac:** Apple requiere que las apps estén firmadas para instalarse sin advertencias.
+> Para venta comercial, necesitarás una cuenta de Apple Developer ($99/año) y configurar
+> `mac.identity` en el `build` de package.json. Para distribución directa (sin App Store),
+> los clientes pueden hacer clic derecho → Abrir la primera vez.
+
+---
+
+## Modo desarrollo (sin instalar)
+
+```bash
+npm run start
+```
+
+Abre la app directamente en Electron sin generar instalador.
+
+## Solo generar el HTML (sin Electron)
+
+```bash
+npm run build:planner
+```
+
+El archivo `out/plannerfy.html` se puede abrir con doble clic en cualquier navegador.
 
 El archivo final aparece en `out/mi-planner.html`.
 
