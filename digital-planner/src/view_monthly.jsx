@@ -9,7 +9,8 @@ function ViewMonthly() {
   const monthHabits = ['Ejercicio', 'Lectura', 'Meditar', 'Escribir'];
 
   const [cursor,      setCursor]      = usePersist('monthly|cursor',      { m: today.getMonth(), y: today.getFullYear() });
-  const [eventos,     setEventos]     = usePersist('monthly|eventos',     {});
+  // tareasDia: "y-m-d" → [{t, d}]  (también se usan como chips en el grid)
+  const [tareasDia,   setTareasDia]   = usePersist('monthly|tareasDia',   {});
   const [foco,        setFoco]        = usePersist('monthly|foco',        '');
   const [prioridades, setPrioridades] = usePersist('monthly|prioridades', Array.from({ length: 5 }, () => ({ t: '', d: false })));
   const [pagos,       setPagos]       = usePersist('monthly|pagos',       Array.from({ length: 5 }, () => ({ dia: '', desc: '', d: false })));
@@ -96,51 +97,75 @@ function ViewMonthly() {
               if (d === null) return <div key={'e' + i} style={{ aspectRatio: '1 / 0.92' }} />;
               const finde = dowOf(d) >= 5;
               const esHoy = d === today.getDate() && cursor.m === today.getMonth() && cursor.y === today.getFullYear();
-              const evs = (eventos[dayKey(d)] || []).filter(x => x && x.trim());
+              const tareas = (tareasDia[dayKey(d)] || []);
+              const pendientes = tareas.filter(x => x.t && x.t.trim() && !x.d);
+              const hayTareas = tareas.some(x => x.t && x.t.trim());
+              const isOpen = popover === d;
               return (
-                <button key={'d' + i} onClick={() => setPopover(popover === d ? null : d)}
+                <button key={'d' + i} onClick={() => setPopover(isOpen ? null : d)}
                   style={{
                     aspectRatio: '1 / 0.92', borderRadius: 8, padding: '7px 9px', textAlign: 'left',
-                    border: `1px solid ${esHoy ? accent : BRAND.lineSoft}`,
-                    background: esHoy ? tint(accent, 0.16) : (finde ? BRAND.creamDeep : BRAND.paper),
-                    display: 'flex', flexDirection: 'column', gap: 4, position: 'relative', overflow: 'hidden',
+                    border: `1px solid ${isOpen ? accent : (esHoy ? accent : BRAND.lineSoft)}`,
+                    background: isOpen ? tint(accent, 0.1) : (esHoy ? tint(accent, 0.16) : (finde ? BRAND.creamDeep : BRAND.paper)),
+                    display: 'flex', flexDirection: 'column', gap: 3, position: 'relative', overflow: 'hidden',
+                    transition: 'all 120ms ease',
                   }}>
                   <span style={{ fontFamily: BRAND.font.mono, fontSize: 13, color: esHoy ? darken(accent, 0.3) : BRAND.ink2, fontWeight: esHoy ? 500 : 400 }}>{d}</span>
-                  {evs.slice(0, 2).map((e, k) => (
-                    <span key={k} style={{ fontFamily: BRAND.font.sans, fontSize: 9.5, fontWeight: 400, color: BRAND.ink2, background: tint(accent, 0.2), borderRadius: 3, padding: '1px 4px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{e}</span>
+                  {pendientes.slice(0, 2).map((t, k) => (
+                    <span key={k} style={{ fontFamily: BRAND.font.sans, fontSize: 9.5, color: BRAND.ink2, background: tint(accent, 0.22), borderRadius: 3, padding: '1px 5px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{t.t}</span>
                   ))}
-                  {evs.length > 2 && <span style={{ fontFamily: BRAND.font.mono, fontSize: 8.5, color: BRAND.ink3 }}>+{evs.length - 2}</span>}
+                  {tareas.filter(x => x.t && x.t.trim()).length > 2 && (
+                    <span style={{ fontFamily: BRAND.font.mono, fontSize: 8.5, color: BRAND.ink3 }}>+{tareas.filter(x => x.t && x.t.trim()).length - 2}</span>
+                  )}
+                  {hayTareas && tareas.every(x => !x.t || x.d) && (
+                    <span style={{ position: 'absolute', bottom: 6, right: 7, width: 7, height: 7, borderRadius: 99, background: accent, opacity: 0.5 }} />
+                  )}
                 </button>
               );
             })}
           </div>
 
+          {/* Panel de tareas del día */}
           {popover !== null && (() => {
-            const list = eventos[dayKey(popover)] || ['', ''];
-            const setList = (next) => setEventos(ev => ({ ...ev, [dayKey(popover)]: next }));
+            const key = dayKey(popover);
+            const lista = tareasDia[key] || [{ t: '', d: false }];
+            const setLista = (next) => setTareasDia(prev => ({ ...prev, [key]: next }));
             const dowName = DIAS_LARGOS[new Date(cursor.y, cursor.m, popover).getDay()];
+            const completadas = lista.filter(x => x.t && x.d).length;
+            const total = lista.filter(x => x.t).length;
             return (
-              <div style={{ marginTop: 16, background: BRAND.paper, border: `1px solid ${tint(accent, 0.4)}`, borderRadius: 10, padding: 18 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                  <span style={{ fontFamily: BRAND.font.serif, fontStyle: 'italic', fontSize: 22, color: BRAND.ink }}>
-                    {dowName} {popover} de {MESES[cursor.m]}
-                  </span>
-                  <button onClick={() => setPopover(null)} style={{ fontFamily: BRAND.font.mono, fontSize: 11, color: BRAND.ink3 }}>cerrar ✕</button>
+              <div style={{ marginTop: 14, background: BRAND.paper, border: `1px solid ${tint(accent, 0.45)}`, borderRadius: 12, padding: '18px 20px', boxShadow: '0 8px 32px rgba(43,38,34,0.07)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+                  <div style={{ display: 'flex', alignItems: 'baseline', gap: 10 }}>
+                    <span style={{ fontFamily: BRAND.font.serif, fontStyle: 'italic', fontSize: 22, color: BRAND.ink }}>
+                      {dowName} {popover} de {MESES[cursor.m]}
+                    </span>
+                    {total > 0 && (
+                      <span style={{ fontFamily: BRAND.font.mono, fontSize: 10, color: BRAND.ink3 }}>{completadas}/{total}</span>
+                    )}
+                  </div>
+                  <button onClick={() => setPopover(null)} style={{ fontFamily: BRAND.font.mono, fontSize: 11, color: BRAND.ink3, padding: '4px 8px', borderRadius: 6, border: `1px solid ${BRAND.lineSoft}` }}>cerrar ✕</button>
                 </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  {list.map((e, k) => (
-                    <div key={k} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <span style={{ width: 6, height: 6, borderRadius: 99, background: e.trim() ? accent : BRAND.line, flex: '0 0 auto' }} />
-                      <InputLine value={e} placeholder={`Evento ${k + 1}…`}
-                        onChange={(v) => setList(list.map((x, j) => j === k ? v : x))} />
-                      {list.length > 1 && (
-                        <button onClick={() => setList(list.filter((_, j) => j !== k))}
-                          title="Quitar" style={{ fontFamily: BRAND.font.mono, fontSize: 13, color: BRAND.ink4, flex: '0 0 auto', width: 18 }}>✕</button>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
+                  {lista.map((item, k) => (
+                    <div key={k} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <CB
+                        checked={item.d}
+                        strike
+                        label={item.t}
+                        placeholder={`Tarea ${k + 1}…`}
+                        onChange={(v) => setLista(lista.map((x, j) => j === k ? { ...x, d: v } : x))}
+                        onLabelChange={(v) => setLista(lista.map((x, j) => j === k ? { ...x, t: v } : x))}
+                      />
+                      {lista.length > 1 && (
+                        <button onClick={() => setLista(lista.filter((_, j) => j !== k))}
+                          title="Quitar" style={{ fontFamily: BRAND.font.mono, fontSize: 13, color: BRAND.ink4, flex: '0 0 auto', width: 18, opacity: 0.6 }}>✕</button>
                       )}
                     </div>
                   ))}
                 </div>
-                <AddBtn onClick={() => setList([...list, ''])} label="Añadir evento" />
+                <AddBtn onClick={() => setLista([...lista, { t: '', d: false }])} label="Añadir tarea" />
               </div>
             );
           })()}
