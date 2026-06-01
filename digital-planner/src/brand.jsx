@@ -84,6 +84,10 @@ const MESES = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
 const MESES_CORTOS = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun',
   'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
 
+function fmtDate(d) {
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
 function semanaDelAnio(d) {
   const date = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
   const dayNum = (date.getUTCDay() + 6) % 7;
@@ -96,5 +100,5 @@ function semanaDelAnio(d) {
 Object.assign(window, {
   BRAND, ACCENTS, tint, darken,
   SettingsContext, useSettings, useAccent, usePersist,
-  DIAS_LARGOS, DIAS_CORTOS, DIAS_LETRA, MESES, MESES_CORTOS, semanaDelAnio,
+  DIAS_LARGOS, DIAS_CORTOS, DIAS_LETRA, MESES, MESES_CORTOS, semanaDelAnio, fmtDate,
 });

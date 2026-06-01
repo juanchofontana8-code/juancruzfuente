@@ -1,31 +1,55 @@
 // ─────────────────────────────────────────────
-// Vista 1 · HOY (Daily)
+// Vista 1 · HOY (Daily) — datos por fecha
 // ─────────────────────────────────────────────
 function ViewDaily() {
   const s = useSettings();
   const accent = useAccent();
   const today = new Date();
 
-  const [clima,    setClima]    = usePersist('daily|clima',    '22° despejado');
-  const [sueno,    setSueno]    = usePersist('daily|sueno',    '7h 40m');
-  const [animo,    setAnimo]    = usePersist('daily|animo',    2);
-  const [agua,     setAgua]     = usePersist('daily|agua',     3);
-  const [tres,     setTres]     = usePersist('daily|tres',     ['', '', '']);
-  const [tresDone, setTresDone] = usePersist('daily|tresDone', [false, false, false]);
-  const [foco,     setFoco]     = usePersist('daily|foco',     '');
-  const [todo,     setTodo]     = usePersist('daily|todo',     Array.from({ length: 8 }, () => ({ t: '', d: false })));
-  const [agenda,   setAgenda]   = usePersist('daily|agenda',   {});
-  const [comidas,  setComidas]  = usePersist('daily|comidas',  { Desayuno: '', Almuerzo: '', Cena: '', Snacks: '' });
-  const [habitos,  setHabitos]  = usePersist('daily|habitos',  []);
-  const [momento,  setMomento]  = usePersist('daily|momento',  '');
-  const [gratitud, setGratitud] = usePersist('daily|gratitud', ['', '', '']);
+  // Offset de días desde hoy (0 = hoy, -1 = ayer, …)
+  const [dayOffset, setDayOffset] = usePersist('daily|dayOffset', 0);
+
+  const targetDate = new Date(today);
+  targetDate.setDate(today.getDate() + dayOffset);
+  const dateKey = fmtDate(targetDate); // "YYYY-MM-DD"
+
+  const isToday = dateKey === fmtDate(today);
+
+  // Todos los datos del día se guardan en un único objeto por fecha
+  const DEFAULTS = {
+    clima: '22° despejado',
+    sueno: '7h 40m',
+    animo: 2,
+    agua: 3,
+    tres: ['', '', ''],
+    tresDone: [false, false, false],
+    foco: '',
+    todo: Array.from({ length: 8 }, () => ({ t: '', d: false })),
+    agenda: {},
+    comidas: { Desayuno: '', Almuerzo: '', Cena: '', Snacks: '' },
+    habitos: [],
+    momento: '',
+    gratitud: ['', '', ''],
+  };
+
+  const [allDays, setAllDays] = usePersist('daily|byDate', {});
+  const day = { ...DEFAULTS, ...(allDays[dateKey] || {}) };
+
+  function setField(field, value) {
+    setAllDays(prev => ({
+      ...prev,
+      [dateKey]: { ...DEFAULTS, ...(prev[dateKey] || {}), [field]: value },
+    }));
+  }
+
+  const { clima, sueno, animo, agua, tres, tresDone, foco, todo, agenda, comidas, habitos, momento, gratitud } = day;
 
   const ANIMOS = ['😔', '😕', '🙂', '😊', '🤩'];
   const horas = Array.from({ length: 17 }, (_, i) => i + 6); // 6 → 22
 
-  const fecha = today.getDate();
-  const diaSemana = DIAS_LARGOS[today.getDay()];
-  const mes = MESES[today.getMonth()];
+  const fecha = targetDate.getDate();
+  const diaSemana = DIAS_LARGOS[targetDate.getDay()];
+  const mes = MESES[targetDate.getMonth()];
 
   const labelCol = { fontFamily: BRAND.font.mono, fontSize: 9.5, color: BRAND.ink3, letterSpacing: '0.1em', textTransform: 'uppercase' };
 
@@ -34,8 +58,18 @@ function ViewDaily() {
       {/* Encabezado */}
       <header style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', flexWrap: 'wrap', gap: 24, marginBottom: 34 }}>
         <div>
-          <div style={{ fontFamily: BRAND.font.mono, fontSize: 11, letterSpacing: '0.18em', textTransform: 'uppercase', color: BRAND.ink3, marginBottom: 8 }}>
-            {diaSemana} · Semana {String(semanaDelAnio(today)).padStart(2, '0')}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+            <NavArrow dir="‹" onClick={() => setDayOffset(o => o - 1)} />
+            <span style={{ fontFamily: BRAND.font.mono, fontSize: 11, letterSpacing: '0.18em', textTransform: 'uppercase', color: BRAND.ink3 }}>
+              {diaSemana} · Semana {String(semanaDelAnio(targetDate)).padStart(2, '0')}
+            </span>
+            <NavArrow dir="›" onClick={() => setDayOffset(o => o + 1)} disabled={isToday} />
+            {!isToday && (
+              <button onClick={() => setDayOffset(0)}
+                style={{ fontFamily: BRAND.font.mono, fontSize: 10, letterSpacing: '0.1em', textTransform: 'uppercase', color: BRAND.ink3, border: `1px solid ${BRAND.line}`, borderRadius: 99, padding: '4px 12px', marginLeft: 4 }}>
+                Hoy
+              </button>
+            )}
           </div>
           <h1 style={{ margin: 0, fontFamily: BRAND.font.serif, fontWeight: 500, fontStyle: 'italic', fontSize: 76, lineHeight: 0.95, color: BRAND.ink, whiteSpace: 'nowrap' }}>
             {fecha} <span style={{ fontStyle: 'normal', fontSize: 40, color: BRAND.ink2 }}>de {mes}</span>
@@ -43,23 +77,23 @@ function ViewDaily() {
         </div>
         <div style={{ display: 'flex', gap: 26, flexWrap: 'wrap', alignItems: 'flex-end' }}>
           <Widget icon="sun" label="Clima">
-            <input value={clima} onChange={(e) => setClima(e.target.value)}
+            <input value={clima} onChange={(e) => setField('clima', e.target.value)}
               style={{ border: 'none', background: 'transparent', width: 120, fontFamily: BRAND.font.sans, fontWeight: 500, fontSize: 15, color: BRAND.ink }} />
           </Widget>
           <Widget icon="heart" label="Ánimo">
             <div style={{ display: 'flex', gap: 4 }}>
               {ANIMOS.map((em, i) => (
-                <button key={i} onClick={() => setAnimo(i)}
+                <button key={i} onClick={() => setField('animo', i)}
                   style={{ fontSize: 17, opacity: animo === i ? 1 : 0.28, filter: animo === i ? 'none' : 'grayscale(0.4)', transition: 'opacity 140ms ease', padding: 0 }}>{em}</button>
               ))}
             </div>
           </Widget>
           <Widget icon="moon" label="Sueño">
-            <input value={sueno} onChange={(e) => setSueno(e.target.value)}
+            <input value={sueno} onChange={(e) => setField('sueno', e.target.value)}
               style={{ border: 'none', background: 'transparent', width: 70, fontFamily: BRAND.font.mono, fontWeight: 500, fontSize: 15, color: BRAND.ink }} />
           </Widget>
           <Widget icon="drop" label="Agua">
-            <WaterTracker filled={agua} total={8} size={17} onToggle={(i) => setAgua(i + 1 === agua ? i : i + 1)} />
+            <WaterTracker filled={agua} total={8} size={17} onToggle={(i) => setField('agua', i + 1 === agua ? i : i + 1)} />
           </Widget>
         </div>
       </header>
@@ -75,8 +109,8 @@ function ViewDaily() {
               {tres.map((t, i) => (
                 <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                   <span style={{ fontFamily: BRAND.font.serif, fontStyle: 'italic', fontSize: 26, color: BRAND.ink3, width: 22 }}>{i + 1}</span>
-                  <CB checked={tresDone[i] || false} onChange={(v) => setTresDone(a => a.map((x, j) => j === i ? v : x))} />
-                  <input value={t} placeholder="…" onChange={(e) => setTres(a => a.map((x, j) => j === i ? e.target.value : x))}
+                  <CB checked={tresDone[i] || false} onChange={(v) => setField('tresDone', tresDone.map((x, j) => j === i ? v : x))} />
+                  <input value={t} placeholder="…" onChange={(e) => setField('tres', tres.map((x, j) => j === i ? e.target.value : x))}
                     style={{ flex: 1, border: 'none', borderBottom: `1px solid ${BRAND.lineSoft}`, background: 'transparent', padding: '4px 0', fontFamily: BRAND.font.sans, fontWeight: 300, fontSize: 16, color: (tresDone[i] || false) ? BRAND.ink3 : BRAND.ink, textDecoration: (tresDone[i] || false) ? 'line-through' : 'none' }} />
                 </div>
               ))}
@@ -85,7 +119,7 @@ function ViewDaily() {
 
           <Card tintBg pad={20}>
             <div style={{ ...labelCol, marginBottom: 8 }}>Foco del día</div>
-            <textarea value={foco} onChange={(e) => setFoco(e.target.value)} rows={2} placeholder="¿Qué hará hoy memorable?"
+            <textarea value={foco} onChange={(e) => setField('foco', e.target.value)} rows={2} placeholder="¿Qué hará hoy memorable?"
               style={{ width: '100%', border: 'none', background: 'transparent', fontFamily: BRAND.font.serif, fontStyle: 'italic', fontSize: 22, lineHeight: 1.3, color: BRAND.ink }} />
           </Card>
 
@@ -94,12 +128,12 @@ function ViewDaily() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               {todo.map((it, i) => (
                 <CB key={i} checked={it.d} strike
-                  onChange={(v) => setTodo(a => a.map((x, j) => j === i ? { ...x, d: v } : x))}
+                  onChange={(v) => setField('todo', todo.map((x, j) => j === i ? { ...x, d: v } : x))}
                   label={it.t} placeholder="Tarea…"
-                  onLabelChange={(v) => setTodo(a => a.map((x, j) => j === i ? { ...x, t: v } : x))} />
+                  onLabelChange={(v) => setField('todo', todo.map((x, j) => j === i ? { ...x, t: v } : x))} />
               ))}
             </div>
-            <AddBtn onClick={() => setTodo(a => [...a, { t: '', d: false }])} />
+            <AddBtn onClick={() => setField('todo', [...todo, { t: '', d: false }])} />
           </section>
         </div>
 
@@ -108,7 +142,7 @@ function ViewDaily() {
           <Eyebrow text="Agenda" style={{ marginBottom: 16 }} />
           <div style={{ display: 'flex', flexDirection: 'column' }}>
             {horas.map(h => (
-              <AgendaSlot key={h} hour={h} event={agenda[h] || ''} onChange={(v) => setAgenda(a => ({ ...a, [h]: v }))} />
+              <AgendaSlot key={h} hour={h} event={agenda[h] || ''} onChange={(v) => setField('agenda', { ...agenda, [h]: v })} />
             ))}
           </div>
         </section>
@@ -121,7 +155,7 @@ function ViewDaily() {
               {Object.keys(comidas).map(k => (
                 <div key={k}>
                   <div style={{ ...labelCol, marginBottom: 2 }}>{k}</div>
-                  <InputLine value={comidas[k]} onChange={(v) => setComidas(c => ({ ...c, [k]: v }))} placeholder="…" />
+                  <InputLine value={comidas[k]} onChange={(v) => setField('comidas', { ...comidas, [k]: v })} placeholder="…" />
                 </div>
               ))}
             </div>
@@ -132,14 +166,14 @@ function ViewDaily() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: 11 }}>
               {s.habits.map((h, i) => (
                 <CB key={i} checked={habitos[i] || false} label={h}
-                  onChange={(v) => setHabitos(a => { const n = [...a]; n[i] = v; return n; })} />
+                  onChange={(v) => { const n = [...habitos]; n[i] = v; setField('habitos', n); }} />
               ))}
             </div>
           </section>
 
           <div style={{ border: `1px dashed ${BRAND.line}`, borderRadius: 10, padding: 18 }}>
             <div style={{ ...labelCol, marginBottom: 6 }}>Momento destacado</div>
-            <textarea value={momento} onChange={(e) => setMomento(e.target.value)} rows={2} placeholder="Algo que quieras recordar…"
+            <textarea value={momento} onChange={(e) => setField('momento', e.target.value)} rows={2} placeholder="Algo que quieras recordar…"
               style={{ width: '100%', border: 'none', background: 'transparent', fontFamily: BRAND.font.serif, fontStyle: 'italic', fontSize: 18, lineHeight: 1.35, color: BRAND.ink }} />
           </div>
 
@@ -149,7 +183,7 @@ function ViewDaily() {
               {gratitud.map((g, i) => (
                 <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                   <span style={{ width: 6, height: 6, borderRadius: 99, background: accent, flex: '0 0 auto' }} />
-                  <InputLine value={g} onChange={(v) => setGratitud(a => a.map((x, j) => j === i ? v : x))} placeholder="Gracias por…" />
+                  <InputLine value={g} onChange={(v) => setField('gratitud', gratitud.map((x, j) => j === i ? v : x))} placeholder="Gracias por…" />
                 </div>
               ))}
             </div>

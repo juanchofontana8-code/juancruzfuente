@@ -18,6 +18,8 @@ function ViewMonthly() {
   const [reflexion,   setReflexion]   = usePersist('monthly|reflexion',   ['', '', '']);
   const [popover,     setPopover]     = React.useState(null);
   const [picker,      setPicker]      = React.useState(false);
+  // Datos de HOY para mostrar punto en días con registro
+  const [allDays]                     = usePersist('daily|byDate', {});
 
   const lunesPrimero = s.weekStart === 'lunes';
   const heads = lunesPrimero ? ['L', 'M', 'X', 'J', 'V', 'S', 'D'] : ['D', 'L', 'M', 'X', 'J', 'V', 'S'];
@@ -101,6 +103,8 @@ function ViewMonthly() {
               const pendientes = tareas.filter(x => x.t && x.t.trim() && !x.d);
               const hayTareas = tareas.some(x => x.t && x.t.trim());
               const isOpen = popover === d;
+              const isoKey = fmtDate(new Date(cursor.y, cursor.m, d));
+              const tieneRegistro = !!(allDays[isoKey] && (allDays[isoKey].foco || allDays[isoKey].momento || (allDays[isoKey].tres || []).some(t => t)));
               return (
                 <button key={'d' + i} onClick={() => setPopover(isOpen ? null : d)}
                   style={{
@@ -119,6 +123,9 @@ function ViewMonthly() {
                   )}
                   {hayTareas && tareas.every(x => !x.t || x.d) && (
                     <span style={{ position: 'absolute', bottom: 6, right: 7, width: 7, height: 7, borderRadius: 99, background: accent, opacity: 0.5 }} />
+                  )}
+                  {tieneRegistro && (
+                    <span title="Tiene registro en Hoy" style={{ position: 'absolute', top: 6, right: 7, width: 6, height: 6, borderRadius: 99, background: '#7BA8C4', opacity: 0.85 }} />
                   )}
                 </button>
               );
