@@ -25,7 +25,6 @@ function ViewDaily() {
     tresDone: [false, false, false],
     foco: '',
     todo: Array.from({ length: 8 }, () => ({ t: '', d: false })),
-    agenda: {},
     comidas: { Desayuno: '', Almuerzo: '', Cena: '', Snacks: '' },
     habitos: [],
     momento: '',
@@ -42,7 +41,17 @@ function ViewDaily() {
     }));
   }
 
-  const { clima, sueno, animo, agua, tres, tresDone, foco, todo, agenda, comidas, habitos, momento, gratitud } = day;
+  // Agenda compartida con la vista Agenda
+  const [agendaEventos, setAgendaEventos] = usePersist('agenda|eventos', {});
+  const agendaDia = agendaEventos[dateKey] || {};
+  function setAgendaHora(h, text) {
+    const list = agendaDia[h] ? [...agendaDia[h]] : [];
+    if (list.length === 0) list.push({ t: '', desc: '' });
+    list[0] = { ...list[0], t: text };
+    setAgendaEventos(prev => ({ ...prev, [dateKey]: { ...agendaDia, [h]: list } }));
+  }
+
+  const { clima, sueno, animo, agua, tres, tresDone, foco, todo, comidas, habitos, momento, gratitud } = day;
 
   const ANIMOS = ['😔', '😕', '🙂', '😊', '🤩'];
   const horas = Array.from({ length: 17 }, (_, i) => i + 6); // 6 → 22
@@ -137,12 +146,14 @@ function ViewDaily() {
           </section>
         </div>
 
-        {/* Columna central · agenda */}
+        {/* Columna central · agenda (compartida con vista Agenda) */}
         <section>
           <Eyebrow text="Agenda" style={{ marginBottom: 16 }} />
           <div style={{ display: 'flex', flexDirection: 'column' }}>
             {horas.map(h => (
-              <AgendaSlot key={h} hour={h} event={agenda[h] || ''} onChange={(v) => setField('agenda', { ...agenda, [h]: v })} />
+              <AgendaSlot key={h} hour={h}
+                event={(agendaDia[h] && agendaDia[h][0]) ? agendaDia[h][0].t : ''}
+                onChange={(v) => setAgendaHora(h, v)} />
             ))}
           </div>
         </section>
