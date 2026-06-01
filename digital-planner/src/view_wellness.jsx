@@ -5,23 +5,46 @@ function ViewWellness() {
   const s = useSettings();
   const accent = useAccent();
 
+  const today = new Date();
+  const todayKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2,'0')}`;
+  const [monthKey, setMonthKey] = usePersist('wellness|monthKey', todayKey);
+  const [allData,  setAllData]  = usePersist('wellness|monthly',  {});
+
+  const [y, m] = monthKey.split('-').map(Number);
+  const mesLabel = `${MESES[m - 1]} ${y}`;
+
+  const AUTOCARE = ['Caminar', 'Estirar', 'Leer', 'Baño', 'Llamar', 'Pausa'];
   const lunesPrimero = s.weekStart === 'lunes';
   const orden = lunesPrimero ? [1, 2, 3, 4, 5, 6, 0] : [0, 1, 2, 3, 4, 5, 6];
   const slots = ['Desayuno', 'Almuerzo', 'Cena', 'Snacks'];
-  const AUTOCARE = ['Caminar', 'Estirar', 'Leer', 'Baño', 'Llamar', 'Pausa'];
 
-  const [meals,   setMeals]   = usePersist('wellness|meals',   Array.from({ length: 7 }, () => ({ Desayuno: '', Almuerzo: '', Cena: '', Snacks: '' })));
-  const [compraA, setCompraA] = usePersist('wellness|compraA', Array.from({ length: 6 }, () => ({ t: '', d: false })));
-  const [compraB, setCompraB] = usePersist('wellness|compraB', Array.from({ length: 6 }, () => ({ t: '', d: false })));
-  const [aguaSem, setAguaSem] = usePersist('wellness|aguaSem', Array(7).fill(0));
-  const [cuerpo,  setCuerpo]  = usePersist('wellness|cuerpo',  { Energía: 6, Estrés: 4, Descanso: 7 });
-  const [care,    setCare]    = usePersist('wellness|care',    AUTOCARE.map(a => ({ act: a, dur: '', d: false })));
+  const defMonth = {
+    meals:   Array.from({ length: 7 }, () => ({ Desayuno: '', Almuerzo: '', Cena: '', Snacks: '' })),
+    compraA: Array.from({ length: 6 }, () => ({ t: '', d: false })),
+    compraB: Array.from({ length: 6 }, () => ({ t: '', d: false })),
+    aguaSem: Array(7).fill(0),
+    cuerpo:  { Energía: 6, Estrés: 4, Descanso: 7 },
+    care:    AUTOCARE.map(a => ({ act: a, dur: '', d: false })),
+  };
+
+  const md  = allData[monthKey] || defMonth;
+  const upd = (patch) => setAllData(prev => {
+    const cur = prev[monthKey] || defMonth;
+    return { ...prev, [monthKey]: { ...cur, ...patch } };
+  });
+
+  const { meals, compraA, compraB, aguaSem, cuerpo, care } = md;
 
   return (
     <div style={{ maxWidth: 1340, margin: '0 auto', padding: '40px 48px 80px' }}>
-      <header style={{ marginBottom: 34 }}>
-        <div style={{ fontFamily: BRAND.font.mono, fontSize: 11, letterSpacing: '0.18em', textTransform: 'uppercase', color: BRAND.ink3, marginBottom: 6 }}>Cuidado personal</div>
-        <h1 style={{ margin: 0, fontFamily: BRAND.font.serif, fontWeight: 500, fontStyle: 'italic', fontSize: 56, lineHeight: 1, color: BRAND.ink }}>Bienestar</h1>
+      <header style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', flexWrap: 'wrap', gap: 20, marginBottom: 34 }}>
+        <div>
+          <div style={{ fontFamily: BRAND.font.mono, fontSize: 11, letterSpacing: '0.18em', textTransform: 'uppercase', color: BRAND.ink3, marginBottom: 6 }}>Cuidado personal</div>
+          <h1 style={{ margin: 0, fontFamily: BRAND.font.serif, fontWeight: 500, fontStyle: 'italic', fontSize: 56, lineHeight: 1, color: BRAND.ink }}>
+            Bienestar <span style={{ fontSize: 32, color: BRAND.ink2 }}>· {mesLabel}</span>
+          </h1>
+        </div>
+        <MonthNav monthKey={monthKey} setMonthKey={setMonthKey} />
       </header>
 
       {/* Meal planner */}
@@ -37,7 +60,10 @@ function ViewWellness() {
               <div style={{ display: 'flex', alignItems: 'center', fontFamily: BRAND.font.sans, fontWeight: 500, fontSize: 12.5, color: BRAND.ink2 }}>{slot}</div>
               {orden.map((dow, ci) => (
                 <div key={ci} style={{ background: BRAND.paper, border: `1px solid ${BRAND.lineSoft}`, borderRadius: 8, minHeight: 56, minWidth: 0 }}>
-                  <textarea value={(meals[ci] || {})[slot] || ''} onChange={(e) => setMeals(m => m.map((x, j) => j === ci ? { ...x, [slot]: e.target.value } : x))} placeholder="…"
+                  <textarea value={(meals[ci] || {})[slot] || ''} onChange={(e) => {
+                    const next = meals.map((x, j) => j === ci ? { ...x, [slot]: e.target.value } : x);
+                    upd({ meals: next });
+                  }} placeholder="…"
                     style={{ width: '100%', height: 56, border: 'none', background: 'transparent', padding: '8px 9px', fontFamily: BRAND.font.sans, fontWeight: 300, fontSize: 12, lineHeight: 1.3, color: BRAND.ink }} />
                 </div>
               ))}
@@ -51,14 +77,14 @@ function ViewWellness() {
         <section>
           <Eyebrow text="Lista de compras" style={{ marginBottom: 16 }} />
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
-            {[[compraA, setCompraA, 'compraA'], [compraB, setCompraB, 'compraB']].map(([list, setList, key]) => (
+            {[['compraA', compraA], ['compraB', compraB]].map(([key, list]) => (
               <div key={key} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                 {list.map((it, i) => (
                   <CB key={i} size={14} checked={it.d} strike label={it.t} placeholder="Artículo…"
-                    onChange={(v) => setList(a => a.map((x, j) => j === i ? { ...x, d: v } : x))}
-                    onLabelChange={(v) => setList(a => a.map((x, j) => j === i ? { ...x, t: v } : x))} />
+                    onChange={(v) => upd({ [key]: list.map((x, j) => j === i ? { ...x, d: v } : x) })}
+                    onLabelChange={(v) => upd({ [key]: list.map((x, j) => j === i ? { ...x, t: v } : x) })} />
                 ))}
-                <AddBtn onClick={() => setList(a => [...a, { t: '', d: false }])} />
+                <AddBtn onClick={() => upd({ [key]: [...list, { t: '', d: false }] })} />
               </div>
             ))}
           </div>
@@ -74,7 +100,7 @@ function ViewWellness() {
                   <span style={{ fontFamily: BRAND.font.sans, fontWeight: 400, fontSize: 15, color: BRAND.ink }}>{k}</span>
                   <span style={{ fontFamily: BRAND.font.serif, fontStyle: 'italic', fontSize: 30, color: darken(accent, 0.28), lineHeight: 1 }}>{cuerpo[k]}<span style={{ fontSize: 15, color: BRAND.ink4 }}>/10</span></span>
                 </div>
-                <Slider value={cuerpo[k]} onChange={(v) => setCuerpo(c => ({ ...c, [k]: v }))} />
+                <Slider value={cuerpo[k]} onChange={(v) => upd({ cuerpo: { ...cuerpo, [k]: v } })} />
               </div>
             ))}
           </div>
@@ -90,7 +116,10 @@ function ViewWellness() {
               <div style={{ fontFamily: BRAND.font.mono, fontSize: 10, letterSpacing: '0.08em', textTransform: 'uppercase', color: BRAND.ink3, marginBottom: 12 }}>{DIAS_CORTOS[dow]}</div>
               <div style={{ display: 'flex', justifyContent: 'center' }}>
                 <WaterTracker filled={aguaSem[ci] || 0} total={8} size={15}
-                  onToggle={(i) => setAguaSem(a => a.map((x, j) => j === ci ? (i + 1 === x ? i : i + 1) : x))} />
+                  onToggle={(i) => {
+                    const next = aguaSem.map((x, j) => j === ci ? (i + 1 === x ? i : i + 1) : x);
+                    upd({ aguaSem: next });
+                  }} />
               </div>
             </div>
           ))}
@@ -109,11 +138,11 @@ function ViewWellness() {
             }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <CareIcon idx={i} />
-                <CB checked={c.d} onChange={(v) => setCare(a => a.map((x, j) => j === i ? { ...x, d: v } : x))} />
+                <CB checked={c.d} onChange={(v) => upd({ care: care.map((x, j) => j === i ? { ...x, d: v } : x) })} />
               </div>
-              <input value={c.act} onChange={(e) => setCare(a => a.map((x, j) => j === i ? { ...x, act: e.target.value } : x))} placeholder="Actividad…"
+              <input value={c.act} onChange={(e) => upd({ care: care.map((x, j) => j === i ? { ...x, act: e.target.value } : x) })} placeholder="Actividad…"
                 style={{ border: 'none', background: 'transparent', fontFamily: BRAND.font.serif, fontStyle: 'italic', fontSize: 20, color: BRAND.ink }} />
-              <input value={c.dur} onChange={(e) => setCare(a => a.map((x, j) => j === i ? { ...x, dur: e.target.value } : x))} placeholder="Duración…"
+              <input value={c.dur} onChange={(e) => upd({ care: care.map((x, j) => j === i ? { ...x, dur: e.target.value } : x) })} placeholder="Duración…"
                 style={{ border: 'none', background: 'transparent', fontFamily: BRAND.font.mono, fontSize: 12, color: BRAND.ink3 }} />
             </div>
           ))}

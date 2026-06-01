@@ -1,17 +1,60 @@
 // ─────────────────────────────────────────────
 // Vista 5 · HÁBITOS & FINANZAS
 // ─────────────────────────────────────────────
+
+// ── Navegador de mes reutilizable ──
+function MonthNav({ monthKey, setMonthKey }) {
+  const accent = useAccent();
+  const today = new Date();
+  const todayKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2,'0')}`;
+  const [y, m] = monthKey.split('-').map(Number);
+  const move = (dir) => {
+    let nm = m + dir, ny = y;
+    if (nm < 1) { nm = 12; ny--; }
+    if (nm > 12) { nm = 1; ny++; }
+    setMonthKey(`${ny}-${String(nm).padStart(2,'0')}`);
+  };
+  const isNow = monthKey === todayKey;
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+      {!isNow && (
+        <button onClick={() => setMonthKey(todayKey)}
+          style={{ fontFamily: BRAND.font.mono, fontSize: 10.5, letterSpacing: '0.1em', textTransform: 'uppercase', color: darken(accent, 0.2), border: `1px solid ${BRAND.line}`, borderRadius: 99, padding: '7px 14px' }}>
+          Mes actual
+        </button>
+      )}
+      <NavArrow dir="‹" onClick={() => move(-1)} />
+      <NavArrow dir="›" onClick={() => move(1)} />
+    </div>
+  );
+}
+
 function ViewHabits() {
+  const today = new Date();
+  const todayKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2,'0')}`;
+  const [monthKey, setMonthKey] = usePersist('habfin|monthKey', todayKey);
   const [tab, setTab] = React.useState('habitos');
+
+  const [y, m] = monthKey.split('-').map(Number);
+  const mesLabel = `${MESES[m - 1]} ${y}`;
+
   return (
     <div style={{ maxWidth: 1340, margin: '0 auto', padding: '40px 48px 80px' }}>
       <header style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 30, flexWrap: 'wrap', gap: 20 }}>
-        <h1 style={{ margin: 0, fontFamily: BRAND.font.serif, fontWeight: 500, fontStyle: 'italic', fontSize: 52, lineHeight: 1, color: BRAND.ink }}>
-          {tab === 'habitos' ? 'Hábitos' : 'Finanzas'}
-        </h1>
-        <SubTabs tabs={[['habitos', 'Hábitos'], ['finanzas', 'Finanzas']]} current={tab} onChange={setTab} />
+        <div>
+          <div style={{ fontFamily: BRAND.font.mono, fontSize: 11, letterSpacing: '0.18em', textTransform: 'uppercase', color: BRAND.ink3, marginBottom: 6 }}>
+            {tab === 'habitos' ? 'Hábitos' : 'Finanzas'}
+          </div>
+          <h1 style={{ margin: 0, fontFamily: BRAND.font.serif, fontWeight: 500, fontStyle: 'italic', fontSize: 52, lineHeight: 1, color: BRAND.ink }}>
+            {mesLabel}
+          </h1>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
+          <MonthNav monthKey={monthKey} setMonthKey={setMonthKey} />
+          <SubTabs tabs={[['habitos', 'Hábitos'], ['finanzas', 'Finanzas']]} current={tab} onChange={setTab} />
+        </div>
       </header>
-      {tab === 'habitos' ? <SubHabitos /> : <SubFinanzas />}
+      {tab === 'habitos' ? <SubHabitos monthKey={monthKey} /> : <SubFinanzas monthKey={monthKey} />}
     </div>
   );
 }
@@ -33,17 +76,27 @@ function SubTabs({ tabs, current, onChange }) {
 }
 
 // ── Sub-vista Hábitos ──
-function SubHabitos() {
+function SubHabitos({ monthKey }) {
   const accent = useAccent();
   const DEFAULT_HABITS = ['Despertar 7am', 'Agua 2L', 'Ejercicio', 'Lectura', 'Meditar', 'Sin azúcar', 'Pasos 10k', 'Vitaminas', 'Diario', 'Sin pantallas', 'Dormir 23h'];
   const CARITAS = ['😔', '😕', '🙂', '😊', '🤩'];
 
-  const [habits, setHabits] = usePersist('habits|habits', DEFAULT_HABITS);
-  const [marks,  setMarks]  = usePersist('habits|marks',  DEFAULT_HABITS.map(() => Array(31).fill(false)));
-  const [animo,  setAnimo]  = usePersist('habits|animo',  null);
-  const [frase,  setFrase]  = usePersist('habits|frase',  '');
+  // Todos los datos de hábitos indexados por mes
+  const [allData, setAllData] = usePersist('habits|monthly', {});
 
-  // Auto-grow: sincroniza filas si el usuario añadió hábitos
+  const defMonth = { habits: DEFAULT_HABITS, marks: DEFAULT_HABITS.map(() => Array(31).fill(false)), animo: null, frase: '' };
+  const md = allData[monthKey] || defMonth;
+
+  const upd = (patch) => setAllData(prev => {
+    const cur = prev[monthKey] || defMonth;
+    return { ...prev, [monthKey]: { ...cur, ...patch } };
+  });
+
+  const habits = md.habits;
+  const marks  = md.marks;
+  const animo  = md.animo;
+  const frase  = md.frase;
+
   const normalizedMarks = habits.map((_, hi) => marks[hi] || Array(31).fill(false));
 
   return (
@@ -51,15 +104,14 @@ function SubHabitos() {
       <Eyebrow text="Tracker mensual · 31 días" style={{ marginBottom: 18 }} />
       <div style={{ background: BRAND.paper, border: `1px solid ${BRAND.lineSoft}`, borderRadius: 12, padding: 20, marginBottom: 30 }}>
         <HabitGrid habits={habits} days={31} marks={normalizedMarks} showSum cell={22} firstColWidth={140}
-          onLabelChange={(i, v) => setHabits(h => h.map((x, j) => j === i ? v : x))}
-          onToggle={(hi, di) => setMarks(m => {
+          onLabelChange={(i, v) => upd({ habits: habits.map((x, j) => j === i ? v : x) })}
+          onToggle={(hi, di) => {
             const next = normalizedMarks.map(r => [...r]);
             next[hi][di] = !next[hi][di];
-            return next;
-          })} />
+            upd({ marks: next });
+          }} />
         <AddBtn onClick={() => {
-          setHabits(h => [...h, '']);
-          setMarks(m => [...normalizedMarks, Array(31).fill(false)]);
+          upd({ habits: [...habits, ''], marks: [...normalizedMarks, Array(31).fill(false)] });
         }} label="Añadir hábito" />
       </div>
 
@@ -68,14 +120,14 @@ function SubHabitos() {
           <div style={{ fontFamily: BRAND.font.mono, fontSize: 9.5, letterSpacing: '0.12em', textTransform: 'uppercase', color: BRAND.ink3, marginBottom: 8 }}>Ánimo del mes</div>
           <div style={{ display: 'flex', gap: 10 }}>
             {CARITAS.map((c, i) => (
-              <button key={i} onClick={() => setAnimo(i)}
+              <button key={i} onClick={() => upd({ animo: i })}
                 style={{ fontSize: 28, opacity: animo === i ? 1 : 0.28, filter: animo === i ? 'none' : 'grayscale(0.5)', transition: 'opacity 140ms ease', padding: 0 }}>{c}</button>
             ))}
           </div>
         </div>
         <div style={{ flex: 1, minWidth: 260 }}>
           <div style={{ fontFamily: BRAND.font.mono, fontSize: 9.5, letterSpacing: '0.12em', textTransform: 'uppercase', color: BRAND.ink3, marginBottom: 4 }}>Cómo me sentí</div>
-          <input value={frase} onChange={(e) => setFrase(e.target.value)} placeholder="Una frase para resumir el mes…"
+          <input value={frase} onChange={(e) => upd({ frase: e.target.value })} placeholder="Una frase para resumir el mes…"
             style={{ width: '100%', border: 'none', borderBottom: `1px solid ${BRAND.lineSoft}`, background: 'transparent', padding: '6px 0', fontFamily: BRAND.font.serif, fontStyle: 'italic', fontSize: 22, color: BRAND.ink }} />
         </div>
       </div>
@@ -84,14 +136,24 @@ function SubHabitos() {
 }
 
 // ── Sub-vista Finanzas ──
-function SubFinanzas() {
+function SubFinanzas({ monthKey }) {
   const accent = useAccent();
   const CATS_DEFAULT = ['Vivienda', 'Comida', 'Transporte', 'Ocio', 'Salud', 'Ahorro', 'Suscripciones', 'Otros'];
 
-  const [entra,  setEntra]  = usePersist('finanzas|entra',  '');
-  const [sale,   setSale]   = usePersist('finanzas|sale',   '');
-  const [cats,   setCats]   = usePersist('finanzas|cats',   CATS_DEFAULT.map(n => ({ n, ppto: '', gasto: '' })));
-  const [ledger, setLedger] = usePersist('finanzas|ledger', Array.from({ length: 12 }, () => ({ f: '', d: '', c: '', i: '' })));
+  const [allData, setAllData] = usePersist('finanzas|monthly', {});
+
+  const defMonth = {
+    entra: '', sale: '',
+    cats: CATS_DEFAULT.map(n => ({ n, ppto: '', gasto: '' })),
+    ledger: Array.from({ length: 12 }, () => ({ f: '', d: '', c: '', i: '' })),
+  };
+  const md = allData[monthKey] || defMonth;
+  const upd = (patch) => setAllData(prev => {
+    const cur = prev[monthKey] || defMonth;
+    return { ...prev, [monthKey]: { ...cur, ...patch } };
+  });
+
+  const { entra, sale, cats, ledger } = md;
 
   const num = (v) => { const n = parseFloat(String(v).replace(',', '.')); return isNaN(n) ? 0 : n; };
   const queda = num(entra) - num(sale);
@@ -118,13 +180,12 @@ function SubFinanzas() {
   return (
     <div>
       <div style={{ display: 'flex', gap: 20, marginBottom: 36 }}>
-        {bigCell('Entra', entra, setEntra)}
-        {bigCell('Sale', sale, setSale)}
+        {bigCell('Entra', entra, (v) => upd({ entra: v }))}
+        {bigCell('Sale', sale, (v) => upd({ sale: v }))}
         {bigCell('Queda', queda, null, true)}
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.15fr', gap: 44, alignItems: 'start' }}>
-        {/* Categorías */}
         <section>
           <Eyebrow text="Categorías de gasto" style={{ marginBottom: 18 }} />
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -137,10 +198,10 @@ function SubFinanzas() {
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 5, gap: 12 }}>
                     <span style={{ fontFamily: BRAND.font.sans, fontWeight: 400, fontSize: 14, color: BRAND.ink, minWidth: 90 }}>{c.n}</span>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                      <input value={c.gasto} onChange={(e) => setCats(a => a.map((x, j) => j === i ? { ...x, gasto: e.target.value } : x))} placeholder="0"
+                      <input value={c.gasto} onChange={(e) => upd({ cats: cats.map((x, j) => j === i ? { ...x, gasto: e.target.value } : x) })} placeholder="0"
                         style={{ width: 46, textAlign: 'right', border: 'none', background: 'transparent', fontFamily: BRAND.font.mono, fontSize: 12.5, color: over ? '#B5564B' : BRAND.ink }} />
                       <span style={{ fontFamily: BRAND.font.mono, fontSize: 11, color: BRAND.ink4 }}>/</span>
-                      <input value={c.ppto} onChange={(e) => setCats(a => a.map((x, j) => j === i ? { ...x, ppto: e.target.value } : x))} placeholder="0"
+                      <input value={c.ppto} onChange={(e) => upd({ cats: cats.map((x, j) => j === i ? { ...x, ppto: e.target.value } : x) })} placeholder="0"
                         style={{ width: 46, border: 'none', background: 'transparent', fontFamily: BRAND.font.mono, fontSize: 12.5, color: BRAND.ink3 }} />
                       <span style={{ fontFamily: BRAND.font.mono, fontSize: 11, color: over ? '#B5564B' : BRAND.ink3, minWidth: 38, textAlign: 'right' }}>{pct}%</span>
                     </div>
@@ -152,7 +213,6 @@ function SubFinanzas() {
           </div>
         </section>
 
-        {/* Ledger */}
         <section>
           <Eyebrow text="Registro de gastos" style={{ marginBottom: 18 }} />
           <div style={{ display: 'grid', gridTemplateColumns: '52px 1fr 96px 70px', gap: 0, fontFamily: BRAND.font.mono, fontSize: 9.5, letterSpacing: '0.08em', textTransform: 'uppercase', color: BRAND.ink3, paddingBottom: 8, borderBottom: `1px solid ${BRAND.line}` }}>
@@ -161,28 +221,23 @@ function SubFinanzas() {
           <div style={{ display: 'flex', flexDirection: 'column' }}>
             {ledger.map((r, i) => (
               <div key={i} style={{ display: 'grid', gridTemplateColumns: '52px 1fr 96px 70px', gap: 0, alignItems: 'center', borderBottom: `1px solid ${BRAND.lineSoft}` }}>
-                <input value={r.f} placeholder="—" onChange={(e) => setLedger(a => a.map((x, j) => j === i ? { ...x, f: e.target.value } : x))}
+                <input value={r.f} placeholder="—" onChange={(e) => upd({ ledger: ledger.map((x, j) => j === i ? { ...x, f: e.target.value } : x) })}
                   style={{ border: 'none', background: 'transparent', padding: '8px 0', fontFamily: BRAND.font.mono, fontSize: 12, color: BRAND.ink2 }} />
-                <input value={r.d} placeholder="…" onChange={(e) => setLedger(a => a.map((x, j) => j === i ? { ...x, d: e.target.value } : x))}
+                <input value={r.d} placeholder="…" onChange={(e) => upd({ ledger: ledger.map((x, j) => j === i ? { ...x, d: e.target.value } : x) })}
                   style={{ border: 'none', background: 'transparent', padding: '8px 0', fontFamily: BRAND.font.sans, fontWeight: 300, fontSize: 13.5, color: BRAND.ink }} />
-                <input value={r.c} placeholder="…" onChange={(e) => setLedger(a => a.map((x, j) => j === i ? { ...x, c: e.target.value } : x))}
+                <input value={r.c} placeholder="…" onChange={(e) => upd({ ledger: ledger.map((x, j) => j === i ? { ...x, c: e.target.value } : x) })}
                   style={{ border: 'none', background: 'transparent', padding: '8px 0', fontFamily: BRAND.font.sans, fontWeight: 300, fontSize: 12.5, color: BRAND.ink2 }} />
                 <input value={r.i} placeholder="0" onChange={(e) => {
-                  setLedger(a => {
-                    const next = a.map((x, j) => j === i ? { ...x, i: e.target.value } : x);
-                    // auto-grow: si es la última fila y tiene contenido, añade otra
-                    if (i === a.length - 1 && e.target.value.trim()) {
-                      return [...next, { f: '', d: '', c: '', i: '' }];
-                    }
-                    return next;
-                  });
+                  const next = ledger.map((x, j) => j === i ? { ...x, i: e.target.value } : x);
+                  if (i === ledger.length - 1 && e.target.value.trim()) next.push({ f: '', d: '', c: '', i: '' });
+                  upd({ ledger: next });
                 }}
                   style={{ border: 'none', background: 'transparent', padding: '8px 0', textAlign: 'right', fontFamily: BRAND.font.mono, fontSize: 12.5, color: BRAND.ink }} />
               </div>
             ))}
           </div>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 4 }}>
-            <AddBtn onClick={() => setLedger(a => [...a, { f: '', d: '', c: '', i: '' }])} />
+            <AddBtn onClick={() => upd({ ledger: [...ledger, { f: '', d: '', c: '', i: '' }] })} />
             <div style={{ display: 'flex', alignItems: 'baseline', gap: 10 }}>
               <span style={{ fontFamily: BRAND.font.mono, fontSize: 9.5, letterSpacing: '0.12em', textTransform: 'uppercase', color: BRAND.ink3 }}>Total</span>
               <span style={{ fontFamily: BRAND.font.serif, fontWeight: 600, fontSize: 28, color: darken(accent, 0.28) }}>{fmt(ledgerTotal)} €</span>
@@ -194,4 +249,4 @@ function SubFinanzas() {
   );
 }
 
-Object.assign(window, { ViewHabits, SubTabs, SubHabitos, SubFinanzas });
+Object.assign(window, { MonthNav, ViewHabits, SubTabs, SubHabitos, SubFinanzas });

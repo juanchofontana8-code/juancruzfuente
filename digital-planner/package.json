@@ -1,13 +1,63 @@
 {
-  "name": "mi-planner",
+  "name": "plannerfy",
   "version": "1.0.0",
   "type": "module",
+  "description": "Tu planner personal — agenda, hábitos, finanzas y bienestar.",
+  "main": "electron/main.js",
   "scripts": {
-    "build:planner": "node build/build-planner.mjs"
+    "build:icon":    "node build/create-icon.mjs",
+    "build:planner": "node build/build-planner.mjs",
+    "build:all":     "npm run build:icon && npm run build:planner",
+    "start":         "npm run build:planner && electron .",
+    "dist":          "npm run build:all && electron-builder",
+    "dist:win":      "npm run build:all && electron-builder --win",
+    "dist:mac":      "npm run build:all && electron-builder --mac",
+    "dist:linux":    "npm run build:all && electron-builder --linux"
+  },
+  "build": {
+    "appId": "com.plannerfy.app",
+    "productName": "Plannerfy",
+    "copyright": "Copyright © 2025 Plannerfy",
+    "files": [
+      "electron/**/*",
+      "out/plannerfy.html",
+      "assets/icons/**/*"
+    ],
+    "icon": "assets/icons/icon",
+    "directories": {
+      "output": "dist-app"
+    },
+    "mac": {
+      "category": "public.app-category.productivity",
+      "target": [{ "target": "dmg", "arch": ["x64", "arm64"] }],
+      "darkModeSupport": false
+    },
+    "win": {
+      "target": [{ "target": "nsis", "arch": ["x64"] }]
+    },
+    "nsis": {
+      "oneClick": true,
+      "perMachine": false,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Plannerfy"
+    },
+    "linux": {
+      "target": ["AppImage", "deb"],
+      "category": "Office"
+    },
+    "dmg": {
+      "title": "Instalar Plannerfy",
+      "background": "#F5EFE6",
+      "window": { "width": 540, "height": 380 }
+    }
   },
   "devDependencies": {
     "esbuild": "^0.21.5",
+    "electron": "^31.0.0",
+    "electron-builder": "^25.0.0",
     "react": "^18.3.1",
-    "react-dom": "^18.3.1"
+    "react-dom": "^18.3.1",
+    "sharp": "^0.33.4"
   }
 }
